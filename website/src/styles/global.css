@@ -44,11 +44,10 @@ article h6 {
   scroll-margin-top: 6rem;
 }
 
-/* Style the page title (h1) with purple background */
 article h1:first-of-type {
-  background-color: #6466f1;
-  color: white;
+  border-bottom: 3px solid #6466f1;
   padding: 1rem 2rem;
+  color: #6466f1;
   margin-left: -2rem;
   margin-right: -2rem;
   margin-bottom: 2rem;

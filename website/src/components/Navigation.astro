@@ -2,16 +2,16 @@
 import Logo from './Logo.astro';
 ---
 
-<nav class="fixed w-full z-50 backdrop-blur-md bg-white/80">
+<nav class="fixed w-full z-50 backdrop-blur-md bg-[#6566F1]">
     <div class="px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 items-center">
             <a href="/">
-                <Logo class="w-auto h-8" />
+                <Logo class="w-auto h-8" inverted />
             </a>
 
             <div class="hidden md:flex items-center space-x-8">
-                <a href="/docs" class="hover:underline underline-offset-2 decoration-1 transition">Docs</a>
-                <a href="https://github.com" target="_blank" class="text-gray-400 hover:text-white transition">
+                <a href="/docs" class="hover:underline underline-offset-2 decoration-1 transition text-gray-200">Docs</a>
+                <a href="https://github.com" target="_blank" class="text-gray-200 hover:text-white transition">
                     <i class="fa-brands fa-github text-xl"></i>
                 </a>
             </div>
