@@ -13,13 +13,14 @@
   --color-dark-900: #0f172a;
 
   --font-sans: 'roc-grotesk', sans-serif;
+  --font-serif: 'mrs-eaves-xl-serif', serif;
   --font-mono: 'Fira Code', monospace;
 }
 
-/* Body uses light font weight by default */
+/* Body uses Roc Grotesk */
 body {
   font-family: 'roc-grotesk', sans-serif;
-  font-weight: 300;
+  font-weight: 400;
   background: #ffffff;
   color: #1f2937;
 }
@@ -31,7 +32,21 @@ h3,
 h4,
 h5,
 h6 {
-  font-weight: 600;
+  font-weight: 700;
+}
+
+/* Prose content uses Georgia serif, headings use Roc */
+.prose {
+  font-family: Georgia, serif;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: 'roc-grotesk', sans-serif;
 }
 
 /* Add scroll margin to headings so they don't get hidden under the fixed header */
