@@ -33,3 +33,6 @@ dev = [
 
 [tool.inline-snapshot]
 format-command = "ruff format --stdin-filename {filename}"
+
+[tool.autopub]
+plugins = ["autopub.plugins.github", "autopub.plugins.uv"]
