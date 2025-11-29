@@ -3,16 +3,16 @@ title: Test Snippet
 description: Testing the code snippet component
 ---
 
-import Snippet from '../../components/Snippet.astro';
+import Snippet from '@usecross/astro-docs-theme/components/Snippet.astro';
 
 ## Example Usage
 
 Here is the full file:
 
-<Snippet file="examples/oauth_example.py" title="Full Example" />
+<Snippet file="examples/oauth_example.py" title="Full Example" basePath=".." />
 
 ## Partial Usage
 
 Here is just the configuration function (lines 3-8):
 
-<Snippet file="examples/oauth_example.py" lines="4-8" title="Configuration Only" />
+<Snippet file="examples/oauth_example.py" lines="4-8" title="Configuration Only" basePath=".." />
