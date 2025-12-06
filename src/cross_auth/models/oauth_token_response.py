@@ -20,6 +20,9 @@ class TokenResponse(BaseModel):
         None,
         description="Space-delimited list of scopes associated with the access token",
     )
+    id_token: str | None = Field(
+        None, description="OIDC ID token (used by Apple, Google, etc.)"
+    )
 
     @property
     def access_token_expires_at(self) -> datetime | None:

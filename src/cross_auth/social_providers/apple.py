@@ -23,7 +23,7 @@ from lia import AsyncHTTPRequest
 from pydantic import BaseModel, EmailStr, Field, ValidationError, field_validator
 
 from cross_auth._context import Context
-from cross_auth.models.oauth_token_response import TokenResponse
+from cross_auth.models.oauth_token_response import OAuth2TokenEndpointResponse, TokenResponse
 
 from .oauth import (
     CallbackData,
@@ -342,23 +342,14 @@ class AppleProvider(OIDCProvider):
 
         return self.extract_user_info(id_token_payload, first_time_user_data)
 
-    def parse_token_response(self, response: httpx.Response) -> TokenResponse:
+    def parse_token_response(self, response: httpx.Response) -> OAuth2TokenEndpointResponse:
         """Parse Apple's token response which includes id_token.
 
         Raises:
             OAuth2Exception: If the response cannot be parsed.
         """
         try:
-            data = response.json()
-
-            # Create a custom response that includes id_token
-            token_response = TokenResponse.model_validate(data)
-
-            # Attach id_token as extra attribute
-            if "id_token" in data:
-                token_response.id_token = data["id_token"]  # type: ignore
-
-            return token_response
+            return OAuth2TokenEndpointResponse.model_validate_json(response.text)
         except (ValidationError, json.JSONDecodeError) as e:
             logger.error(f"Failed to parse Apple token response: {e}")
             raise OAuth2Exception(
