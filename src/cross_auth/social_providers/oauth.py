@@ -35,6 +35,15 @@ class UserInfo(TypedDict):
     id: str
 
 
+class TokenExchangeParams(TypedDict, total=False):
+    grant_type: str
+    code: str
+    redirect_uri: str
+    client_id: str
+    client_secret: str
+    code_verifier: str
+
+
 class OAuth2Exception(Exception):
     def __init__(self, error: str, error_description: str):
         self.error = error
@@ -64,11 +73,20 @@ class OAuth2LinkCodeData(BaseModel):
     provider_code_verifier: str | None = None
 
 
+class CallbackData(BaseModel):
+    """Data extracted from an OAuth callback request."""
+
+    code: str | None
+    state: str | None
+    error: str | None
+    extra: dict[str, Any] | None = None  # Provider-specific data
+
+
 class OAuth2Provider:
     id: ClassVar[str]
     authorization_endpoint: ClassVar[str]
     token_endpoint: ClassVar[str]
-    user_info_endpoint: ClassVar[str]
+    user_info_endpoint: ClassVar[str | None]
     scopes: ClassVar[list[str]]
     supports_pkce: ClassVar[bool]
 
@@ -239,13 +257,50 @@ class OAuth2Provider:
             query_params=query_params,
         )
 
+    async def extract_callback_data(self, request: AsyncHTTPRequest) -> CallbackData:
+        """Extract code, state, and error from callback request.
+
+        Override for providers that use POST (e.g., Apple with response_mode=form_post).
+        """
+        return CallbackData(
+            code=request.query_params.get("code"),
+            state=request.query_params.get("state"),
+            error=request.query_params.get("error"),
+        )
+
+    def get_user_info_from_token_response(
+        self,
+        token_response: TokenResponse,
+        context: Context,
+        extra: dict[str, Any] | None = None,
+    ) -> UserInfo:
+        """Get user info after token exchange.
+
+        Default implementation fetches from userinfo endpoint.
+        Override for providers that include user info in the token response (e.g., Apple).
+
+        Args:
+            token_response: The token response from the provider.
+            context: The request context.
+            extra: Optional provider-specific data from extract_callback_data.
+        """
+        return self.fetch_user_info(token_response.access_token)
+
     async def callback(self, request: AsyncHTTPRequest, context: Context) -> Response:
         """
         This callback endpoint is used to exchange the Identity Provider's code
         for a token and then login the user on our side.
         """
+        callback_data = await self.extract_callback_data(request)
 
-        state = request.query_params.get("state")
+        if callback_data.error:
+            logger.error(f"OAuth error: {callback_data.error}")
+            return Response.error(
+                "access_denied",
+                error_description=f"Authorization failed: {callback_data.error}",
+            )
+
+        state = callback_data.state
 
         if not state:
             logger.error("No state found in request")
@@ -278,9 +333,7 @@ class OAuth2Provider:
                 error_description="Invalid provider data",
             )
 
-        code = request.query_params.get("code")
-
-        if not code:
+        if not callback_data.code:
             logger.error("No authorization code received in callback")
 
             return Response.error_redirect(
@@ -291,7 +344,7 @@ class OAuth2Provider:
             )
 
         if provider_data.link:
-            return self._link_flow(request, context, provider_data, code)
+            return self._link_flow(request, context, provider_data, callback_data.code)
 
         redirect_uri = provider_data.redirect_uri
 
@@ -301,10 +354,12 @@ class OAuth2Provider:
 
         try:
             token_response = self.exchange_code(
-                code, proxy_redirect_uri, provider_data.provider_code_verifier
+                callback_data.code, proxy_redirect_uri, provider_data.provider_code_verifier
             )
 
-            user_info = self.fetch_user_info(token_response.access_token)
+            user_info = self.get_user_info_from_token_response(
+                token_response, context, callback_data.extra
+            )
 
             email, provider_user_id = self.validate_user_info(user_info)
         except OAuth2Exception as e:
@@ -462,12 +517,12 @@ class OAuth2Provider:
 
     def build_token_exchange_params(
         self, code: str, redirect_uri: str, code_verifier: str | None = None
-    ) -> dict:
+    ) -> TokenExchangeParams:
         """Build token exchange request parameters.
 
         Override this method to customize token exchange parameters.
         """
-        params = {
+        params: TokenExchangeParams = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
@@ -496,17 +551,22 @@ class OAuth2Provider:
 
     def parse_token_response(
         self, response: httpx.Response
-    ) -> OAuth2TokenEndpointResponse | None:
+    ) -> OAuth2TokenEndpointResponse:
         """Parse token exchange response.
 
-        Override this method to handle different response formats
-        (e.g., JSON instead of query string).
+        Override this method to handle different response formats.
+
+        Raises:
+            OAuth2Exception: If the response cannot be parsed.
         """
         try:
             return OAuth2TokenEndpointResponse.model_validate_json(response.text)
         except ValidationError as e:
-            logger.error(f"Failed to parse token response: {str(e)}")
-            return None
+            logger.error(f"Failed to parse token response: {e}")
+            raise OAuth2Exception(
+                error="server_error",
+                error_description="Failed to parse token response",
+            )
 
     def exchange_code(
         self,
@@ -531,13 +591,6 @@ class OAuth2Provider:
             response.raise_for_status()
 
             token_response = self.parse_token_response(response)
-
-            if token_response is None:
-                logger.error("Failed to parse token response")
-                raise OAuth2Exception(
-                    error="server_error",
-                    error_description="Failed to parse token response",
-                )
 
             if token_response.is_error():
                 assert isinstance(token_response.root, TokenErrorResponse)
@@ -760,7 +813,7 @@ class OAuth2Provider:
             ),
             Route(
                 path=f"/{self.id}/callback",
-                methods=["GET"],
+                methods=["GET", "POST"],  # POST needed for Apple (response_mode=form_post)
                 function=self.callback,
                 operation_id=f"{self.id}_callback",
             ),
