@@ -5,7 +5,7 @@ description = "Cross-Auth documentation website"
 requires-python = ">=3.10"
 dependencies = [
     "cross-inertia",
-    "fastapi>=0.100.0",
+    "fastapi[standard]>=0.100.0",
     "uvicorn[standard]>=0.20.0",
     "jinja2>=3.0.0",
 ]
