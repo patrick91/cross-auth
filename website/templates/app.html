@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% if head %}{% for tag in head %}{{ tag|safe }}{% endfor %}{% else %}<title inertia>{% if page_title %}{{ page_title }} - {% endif %}Cross-Auth</title>{% endif %}
+    {% for css in vite_assets.css %}
+    <link rel="stylesheet" href="{{ css }}" />
+    {% endfor %}
+    {% for js in vite_assets.preload %}
+    <link rel="modulepreload" href="{{ js }}" />
+    {% endfor %}
+  </head>
+  <body>
+    {{ inertia|safe }}
+    {% for js in vite_assets.js %}
+    <script type="module" src="{{ js }}"></script>
+    {% endfor %}
+  </body>
+</html>
