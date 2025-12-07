@@ -1,33 +1,23 @@
-from pathlib import Path
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from inertia import (
-    InertiaMiddleware,
-    InertiaConfig,
-    InertiaResponse,
-    Dependency as InertiaDep,
-)
+from inertia.fastapi import InertiaMiddleware, InertiaDep
 
 app = FastAPI(title="Cross-Auth Docs", docs_url=None, redoc_url=None)
 
 app.add_middleware(
     InertiaMiddleware,
-    InertiaConfig(
-        templates_dir=Path(__file__).parent / "templates",
-        manifest_path=Path(__file__).parent / "static" / "build" / ".vite" / "manifest.json",
-        environment="development",
-        dev_url="http://localhost:5173",
-        entrypoint="frontend/app.tsx",
-        use_flash_messages=False,
-    ),
+    templates_dir="templates",
+    manifest_path="static/build/.vite/manifest.json",
+    environment="development",
+    dev_url="http://localhost:5173",
+    entrypoint="frontend/app.tsx",
 )
 
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-async def home(request: Request, inertia: InertiaDep) -> InertiaResponse:
+async def home(inertia: InertiaDep):
     return inertia.render(
         "Home",
         {
@@ -58,5 +48,4 @@ async def home(request: Request, inertia: InertiaDep) -> InertiaResponse:
             "githubUrl": "https://github.com/patrick91/cross-auth",
             "navLinks": [{"label": "Docs", "href": "/docs"}],
         },
-        view_data={"page_title": "Cross-Auth - Python Authentication"},
     )
