@@ -2,8 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  base: command === 'build' ? '/static/build/' : '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './frontend'),
@@ -17,4 +18,4 @@ export default defineConfig({
       input: 'frontend/app.tsx',
     },
   },
-})
+}))

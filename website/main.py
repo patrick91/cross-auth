@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from inertia.fastapi import InertiaMiddleware, InertiaDep
+from inertia.fastapi.experimental import inertia_lifespan
 
-app = FastAPI(title="Cross-Auth Docs", docs_url=None, redoc_url=None)
+app = FastAPI(title="Cross-Auth Docs", docs_url=None, redoc_url=None, lifespan=inertia_lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
