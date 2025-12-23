@@ -306,6 +306,32 @@ class OAuth2Provider:
 
             user_info = self.fetch_user_info(token_response.access_token)
 
+            # Get provider_user_id first to check for existing social account
+            provider_user_id = user_info.get("id")
+            if not provider_user_id:
+                raise OAuth2Exception(
+                    error="server_error",
+                    error_description="No provider user ID found in user info",
+                )
+
+            # Check if this is login (existing social account) or signup
+            social_account = context.accounts_storage.find_social_account(
+                provider=self.id,
+                provider_user_id=str(provider_user_id),
+            )
+
+            is_login = social_account is not None
+            stored_email = None
+            if social_account:
+                existing_user = context.accounts_storage.find_user_by_id(
+                    social_account.user_id
+                )
+                stored_email = existing_user.email if existing_user else None
+
+            # Resolve email based on login/signup context
+            email = self.resolve_email(user_info, is_login, stored_email)
+            user_info["email"] = email  # Update for downstream use
+
             email, provider_user_id = self.validate_user_info(user_info)
         except OAuth2Exception as e:
             return Response.error_redirect(
@@ -314,11 +340,6 @@ class OAuth2Provider:
                 error_description=e.error_description,
                 state=provider_data.client_state,
             )
-
-        social_account = context.accounts_storage.find_social_account(
-            provider=self.id,
-            provider_user_id=provider_user_id,
-        )
 
         if social_account:
             context.accounts_storage.update_social_account(
@@ -603,6 +624,25 @@ class OAuth2Provider:
 
         return email, provider_user_id
 
+    def resolve_email(
+        self,
+        user_info: dict,
+        is_login: bool,
+        stored_email: str | None = None,
+    ) -> str:
+        """Resolve the email to use based on login/signup context.
+
+        Override in subclasses for provider-specific email selection.
+        Default returns the email already in user_info.
+        """
+        email = user_info.get("email")
+        if not email:
+            raise OAuth2Exception(
+                error="server_error",
+                error_description="No email found in user info",
+            )
+        return email
+
     async def finalize_link(
         self, request: AsyncHTTPRequest, context: Context
     ) -> Response:
@@ -703,19 +743,35 @@ class OAuth2Provider:
             )
 
             user_info = self.fetch_user_info(token_response.access_token)
-            email, provider_user_id = self.validate_user_info(user_info)
-        except OAuth2Exception as e:
-            return Response.error_redirect(
-                redirect_uri,
-                error=e.error,
-                error_description=e.error_description,
-                state=provider_data.client_state,
+
+            # Get provider_user_id first to check for existing social account
+            provider_user_id = user_info.get("id")
+            if not provider_user_id:
+                raise OAuth2Exception(
+                    error="server_error",
+                    error_description="No provider user ID found in user info",
+                )
+
+            # Check if this provider is already linked
+            social_account = context.accounts_storage.find_social_account(
+                provider=self.id,
+                provider_user_id=str(provider_user_id),
             )
 
-        social_account = context.accounts_storage.find_social_account(
-            provider=self.id,
-            provider_user_id=user_info["id"],
-        )
+            # For link flow, use login rules (user already exists)
+            is_login = social_account is not None
+            stored_email = user.email
+
+            # Resolve email based on context
+            email = self.resolve_email(user_info, is_login, stored_email)
+            user_info["email"] = email
+
+            email, provider_user_id = self.validate_user_info(user_info)
+        except OAuth2Exception as e:
+            return Response.error(
+                e.error,
+                error_description=e.error_description,
+            )
 
         if social_account:
             if social_account.user_id != user.id:
