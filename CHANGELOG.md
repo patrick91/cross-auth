@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+0.2.0 - 2025-12-23
+------------------
+
+Add `id_token` field to `TokenResponse` for OpenID Connect support. This optional field holds the ID token returned alongside the access token in OIDC flows.
+
 0.1.3 - 2025-12-23
 ------------------
 
