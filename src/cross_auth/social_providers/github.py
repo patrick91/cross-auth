@@ -120,4 +120,8 @@ class GitHubProvider(OAuth2Provider):
         if not info["email"]:
             raise ValueError("No verified email found")
 
+        # Ensure name is always a string, falling back to login (username)
+        if not info.get("name"):
+            info["name"] = info["login"]
+
         return info
